@@ -13,6 +13,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
@@ -56,6 +59,7 @@ public class ListFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_list, container, false);
         ButterKnife.bind(this, view);
+        setHasOptionsMenu(true);
         return view;
     }
 
@@ -69,24 +73,32 @@ public class ListFragment extends Fragment {
         dogsList.setLayoutManager(new LinearLayoutManager(getContext()));
         dogsList.setAdapter(dogsListAdapter);
 
+        refreshLayout.setOnRefreshListener(() -> {
+            dogsList.setVisibility(View.GONE);
+            listError.setVisibility(View.GONE);
+            loadingView.setVisibility(View.VISIBLE);
+            viewModel.refreshBypassCache();
+            refreshLayout.setRefreshing(false);
+        });
+
         observeViewModel();
     }
 
     private void observeViewModel(){
-        viewModel.dogs.observe(this, dogs -> {
+        viewModel.dogs.observe(getViewLifecycleOwner(), dogs -> {
             if (dogs != null && dogs instanceof List){
                 dogsList.setVisibility(View.VISIBLE);
                 dogsListAdapter.updateDogsList(dogs);
             }
         });
 
-        viewModel.dogLoadError.observe(this, isError -> {
+        viewModel.dogLoadError.observe(getViewLifecycleOwner(), isError -> {
             if (isError != null && isError instanceof Boolean){
                 listError.setVisibility(isError ? View.VISIBLE : View.GONE);
             }
         });
 
-        viewModel.loading.observe(this, isLoading -> {
+        viewModel.loading.observe(getViewLifecycleOwner(), isLoading -> {
             if (isLoading != null && isLoading instanceof Boolean){
                 loadingView.setVisibility(isLoading ? View.VISIBLE : View.GONE);
                 if (isLoading){
@@ -95,5 +107,24 @@ public class ListFragment extends Fragment {
                 }
             }
         });
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.list_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.actionSettings : {
+                if (isAdded()){
+                    Navigation.findNavController(getView()).navigate(ListFragmentDirections.actionSettings());
+                }
+                break;
+            }
+        }
+        return super.onOptionsItemSelected(item);
     }
 }
